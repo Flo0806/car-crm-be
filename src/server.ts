@@ -4,6 +4,8 @@ import authRoutes from "./routes/auth.route";
 import customerRoutes from "./routes/customer.route";
 import importRoutes from "./routes/import.route";
 import mongoose from "mongoose";
+import * as path from "path";
+import * as fs from "fs";
 
 dotenv.config();
 
@@ -15,7 +17,6 @@ app.use(express.json()); // Bodyparser
 // MongoDB connection
 const connectDB = async () => {
   try {
-    console.log("HERE", process.env.MONGO_URI);
     await mongoose.connect(process.env.MONGO_URI!);
     console.log("MongoDB connected");
   } catch (err: any) {
@@ -23,6 +24,14 @@ const connectDB = async () => {
     process.exit(1); // Exit server if connection failed
   }
 };
+
+// We need a uploads folder - This folder will not be included into our git
+// So check if we need to create it:
+const uploadsDir = path.resolve(__dirname, "..", "uploads");
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir);
+  console.log("Uploads folder created.");
+}
 
 // Routes
 app.use("/auth", authRoutes);
