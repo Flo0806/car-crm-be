@@ -31,8 +31,8 @@ const userSchema: Schema = new Schema({
   passwordHash: {
     type: String,
     required: true,
-    minlength: 32,
-    maxlength: 32,
+    minlength: 60,
+    maxlength: 60,
   },
   createdAt: {
     type: Date,
