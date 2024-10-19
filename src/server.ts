@@ -1,13 +1,15 @@
-import express from "express";
 import dotenv from "dotenv";
-import authRoutes from "./routes/auth.route";
-import customerRoutes from "./routes/customer.route";
-import importRoutes from "./routes/import.route";
+dotenv.config();
+
+import express from "express";
 import mongoose from "mongoose";
 import * as path from "path";
 import * as fs from "fs";
 
-dotenv.config();
+import authRoutes from "./routes/auth.route";
+import customerRoutes from "./routes/customer.route";
+import importRoutes from "./routes/import.route";
+import userRoutes from "./routes/user.route";
 
 const app = express();
 
@@ -37,6 +39,7 @@ if (!fs.existsSync(uploadsDir)) {
 app.use("/auth", authRoutes);
 app.use("/customers", customerRoutes);
 app.use("/import", importRoutes);
+app.use("/users", userRoutes);
 
 // Start server
 const PORT = process.env.PORT || 5000;
