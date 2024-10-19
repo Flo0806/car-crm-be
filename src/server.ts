@@ -2,7 +2,8 @@ import express from "express";
 import dotenv from "dotenv";
 import authRoutes from "./routes/auth.route";
 import customerRoutes from "./routes/customer.route";
-import mongoose, { Mongoose } from "mongoose";
+import importRoutes from "./routes/import.route";
+import mongoose from "mongoose";
 
 dotenv.config();
 
@@ -26,6 +27,7 @@ const connectDB = async () => {
 // Routes
 app.use("/auth", authRoutes);
 app.use("/customers", customerRoutes);
+app.use("/import", importRoutes);
 
 // Start server
 const PORT = process.env.PORT || 5000;
