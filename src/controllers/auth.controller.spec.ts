@@ -71,7 +71,6 @@ describe("AuthController - Login", () => {
       .post("/auth/login")
       .send({ email: "user@example.com", password: "correctpassword" });
 
-    console.log(res.body); // Debug output
     expect(res.status).toBe(200);
     expect(res.body.accessToken).toBe("access-token");
     expect(res.body.refreshToken).toBe("refresh-token");
@@ -82,7 +81,6 @@ describe("AuthController - Login", () => {
       .post("/auth/login")
       .send({ password: "somepassword" });
 
-    console.log("RESP", res);
     expect(res.status).toBe(400);
     expect(res.body.msg).toBe("Email is required");
   });
