@@ -1,12 +1,16 @@
 import { Router } from "express";
 import {
   addAddressToCustomer,
-  changeAddress,
+  updateAddress,
+  updateContactPerson,
   createCustomer,
+  deleteAddress,
+  deleteContactPerson,
   deleteCustomer,
   getAllCustomers,
   getCustomerById,
   updateCustomer,
+  addContactPersonToCustomer,
 } from "../controllers/customer.controller";
 
 const router = Router();
@@ -33,7 +37,15 @@ router.post("/", createCustomer);
 
 router.put("/:id/address", addAddressToCustomer);
 
-router.put("/:customerId/addresses/:addressId", changeAddress);
+router.put("/:customerId/addresses/:addressId", updateAddress);
+
+router.delete("/:customerId/addresses/:addressId", deleteAddress);
+
+router.put("/:customerId/contact", addContactPersonToCustomer);
+
+router.put("/:customerId/contacts/:contactId", updateContactPerson);
+
+router.delete("/:customerId/contacts/:contactId", deleteContactPerson);
 
 /**
  * @route PUT /customers/:id
