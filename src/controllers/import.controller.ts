@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
 import csvParser from "csv-parser";
-import Customer from "../models/customer.model";
 import fs from "fs";
 import path from "path";
+import { Customer } from "../models/customer.model";
 
 /**
  * @desc Import customers from a CSV file
