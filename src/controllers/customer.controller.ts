@@ -4,27 +4,34 @@ import {
   AddressType,
   Address,
   Customer,
+  ContactPerson,
 } from "../models/customer.model";
+import {
+  AddressBody,
+  ContactPersonBody,
+  FlatCustomerEntry,
+} from "../common/interfaces/interfaces";
+import mongoose from "mongoose";
 
 //#region Helper
 async function generateNextIntNr(): Promise<string> {
   const lastCustomer = await Customer.findOne().sort({ intNr: -1 }).exec();
 
   if (!lastCustomer || !lastCustomer.intNr) {
-    return "K-0001"; // Falls es noch keinen Kunden gibt, mit "K-0001" beginnen
+    return "K-0001"; // If no customer exists, start with "K-0001"
   }
 
   const lastIntNr = lastCustomer.intNr;
   const currentNumber = parseInt(lastIntNr.split("-")[1], 10);
   const nextNumber = currentNumber + 1;
 
-  // Formatieren der neuen Nummer, z.B. "K-0002"
+  // Format the new number, e.g., "K-0002"
   return `K-${nextNumber.toString().padStart(4, "0")}`;
 }
 //#endregion
 
 /**
- * @desc Get all customers
+ * @desc Get all customers as a flat list
  * @route GET /customers
  * @access Public
  * @param {Request} req - Express request object
@@ -36,45 +43,26 @@ export const getAllCustomers = async (
   res: Response
 ): Promise<void> => {
   try {
-    // Suche alle Kunden und populiere die Adressen und Kontaktpersonen
+    // Find all customers and populate addresses and contact persons
     const customers = await Customer.find()
       .populate("addresses")
       .populate("contactPersons")
       .exec();
 
-    // Erstelle ein flaches Array, in dem jede Adresse und die verknüpfte Kontaktperson eine eigene Zeile darstellt
-    const flatCustomerList = customers.reduce((acc: any[], customer) => {
-      customer.addresses.forEach((address: any) => {
-        // Finde die Kontaktpersonen, die mit dieser Adresse verknüpft sind
-        const linkedPersons = customer.contactPersons.filter(
-          (person: any) => person.address && person.address.equals(address._id)
-        );
+    // Create a flat array where each address and its associated contact person is a separate entry
+    const flatCustomerList = customers.reduce(
+      (acc: FlatCustomerEntry[], customer) => {
+        customer.addresses.forEach((address: any) => {
+          // Find the contact persons linked to this address
+          const linkedPersons = customer.contactPersons.filter(
+            (person: any) =>
+              person.address && person.address.equals(address._id)
+          );
 
-        // Falls keine verknüpften Kontaktpersonen vorhanden sind, dennoch eine Zeile für die Adresse hinzufügen
-        if (linkedPersons.length === 0) {
-          acc.push({
-            id: customer._id,
-            intNr: customer.intNr,
-            type: customer.type,
-            companyName: address.companyName || null,
-            country: address.country,
-            zip: address.zip,
-            city: address.city,
-            street: address.street,
-            email: address.email || null,
-            phone: address.phone || null,
-            fax: address.fax || null,
-            firstName: null,
-            lastName: null,
-            contactEmail: null,
-            contactPhone: null,
-            birthDate: null,
-          });
-        } else {
-          // Jede Kontaktperson in eine eigene Zeile einfügen
-          linkedPersons.forEach((person: any) => {
+          // If no contact persons are linked, still add a row for the address
+          if (linkedPersons.length === 0) {
             acc.push({
-              id: customer._id,
+              id: customer._id as string,
               intNr: customer.intNr,
               type: customer.type,
               companyName: address.companyName || null,
@@ -85,17 +73,44 @@ export const getAllCustomers = async (
               email: address.email || null,
               phone: address.phone || null,
               fax: address.fax || null,
-              firstName: person.firstName,
-              lastName: person.lastName,
-              contactEmail: person.email || null,
-              contactPhone: person.phone || null,
-              birthDate: person.birthDate || null,
+              firstName: null,
+              lastName: null,
+              contactEmail: null,
+              contactPhone: null,
+              birthDate: null,
+              cId: null, // No contact person
+              aId: address._id, // Address exists
             });
-          });
-        }
-      });
-      return acc;
-    }, []);
+          } else {
+            // Add each contact person in its own row
+            linkedPersons.forEach((person: any) => {
+              acc.push({
+                id: customer._id as string,
+                intNr: customer.intNr,
+                type: customer.type,
+                companyName: address.companyName || null,
+                country: address.country,
+                zip: address.zip,
+                city: address.city,
+                street: address.street,
+                email: address.email || null,
+                phone: address.phone || null,
+                fax: address.fax || null,
+                firstName: person.firstName,
+                lastName: person.lastName,
+                contactEmail: person.email || null,
+                contactPhone: person.phone || null,
+                birthDate: person.birthDate || null,
+                cId: person._id, // Contact person ID
+                aId: address._id, // Address ID
+              });
+            });
+          }
+        });
+        return acc;
+      },
+      []
+    );
 
     res.status(200).json(flatCustomerList);
   } catch (error: any) {
@@ -104,12 +119,12 @@ export const getAllCustomers = async (
 };
 
 /**
- * @desc Get all customers
- * @route GET /customers
+ * @desc Get one customer by ID, with addresses and contacts as children
+ * @route GET /customers/:customerId
  * @access Public
  * @param {Request} req - Express request object
  * @param {Response} res - Express response object
- * @returns {Promise<any>} - List of customers or error message
+ * @returns {Promise<any>} - The customer or an error message
  */
 export const getCustomerById = async (
   req: Request,
@@ -118,17 +133,16 @@ export const getCustomerById = async (
   try {
     const { customerId } = req.params;
 
-    // Finde den Kunden mit der angegebenen ID und populiere Adressen und Kontaktpersonen
+    // Find the customer by the provided ID and populate addresses and contact persons
     const customer = await Customer.findById(customerId)
-      .populate("addresses") // Adressen auflösen
-      .populate("contactPersons") // Kontaktpersonen auflösen
+      .populate("addresses")
+      .populate("contactPersons")
       .exec();
 
     if (!customer) {
       return res.status(404).json({ error: "Customer not found" });
     }
 
-    // Kunde zurückgeben
     res.status(200).json(customer);
   } catch (error) {
     res.status(500).json({ error: "Server error" });
@@ -136,17 +150,17 @@ export const getCustomerById = async (
 };
 
 /**
- * @desc Create a new customer
+ * @desc Create a new customer, with address and contact
  * @route POST /customers
  * @access Public
  * @param {Request} req - Express request object
  * @param {Response} res - Express response object
- * @returns {Promise<any>} - Created customer or error message
+ * @returns {Promise<any>} - The created customer or an error message
  */
-export async function createCustomer(
+export const createCustomer = async (
   req: Request,
   res: Response
-): Promise<void> {
+): Promise<any> => {
   try {
     const {
       type,
@@ -155,13 +169,13 @@ export async function createCustomer(
     }: {
       intNr: string;
       type: "DEALER" | "COMPANY" | "PRIVATE";
-      contactPersons: Omit<ContactPersonType, "address">[]; // Adresse wird später verknüpft
-      addresses: Omit<AddressType, "_id">[]; // Adresse wird gespeichert, also kein _id erwartet
+      contactPersons: Omit<ContactPersonType, "address">[]; // Address will be linked later
+      addresses: Omit<AddressType, "_id">[]; // Address is saved, so _id is not expected
     } = req.body;
 
     const intNr = await generateNextIntNr();
 
-    // Zuerst die Adressen erstellen und speichern
+    // Create and save addresses first
     const savedAddresses = await Promise.all(
       addresses.map(async (address) => {
         const newAddress = new Address(address);
@@ -169,48 +183,61 @@ export async function createCustomer(
       })
     );
 
-    // Die IDs der gespeicherten Adressen nehmen und bei den Kontaktpersonen verknüpfen
+    // Take the IDs of the saved addresses and link them to the contact persons
     const updatedContactPersons = contactPersons.map((person) => ({
       ...person,
-      address: savedAddresses.length > 0 ? savedAddresses[0]._id : undefined, // Verknüpfe die erste Adresse
+      address: savedAddresses.length > 0 ? savedAddresses[0]._id : undefined, // Link the first address
     }));
 
-    // Jetzt den neuen Customer erstellen und die Kontaktpersonen und Adressen verknüpfen
+    // Now create the new customer and link the contact persons and addresses
     const newCustomer = new Customer({
       intNr,
       type,
       contactPersons: updatedContactPersons,
-      addresses: savedAddresses, // Verknüpfe die gespeicherten Adressen
+      addresses: savedAddresses,
     });
 
-    // Customer-Dokument speichern
     const savedCustomer = await newCustomer.save();
 
     res.status(201).json(savedCustomer);
   } catch (error: any) {
+    if (error instanceof mongoose.Error.ValidationError) {
+      const errorMessages = Object.values(error.errors).map(
+        (err) => err.message
+      );
+      return res.status(400).json({ errors: errorMessages });
+    }
     res.status(500).json({ error: error.message });
   }
-}
+};
 
+/**
+ * @desc Add an address to an existing customer
+ * @route PUT /customers/:customerId/address
+ * @access Public
+ * @param {Request} req - Express request object
+ * @param {Response} res - Express response object
+ * @returns {Promise<any>} - Updated customer or error message
+ */
 export const addAddressToCustomer = async (
   req: Request,
   res: Response
 ): Promise<any> => {
   try {
-    const { id } = req.params; // Die ID des Kunden aus der URL
-    const newAddressData = req.body; // Die neue Adresse aus dem Request Body
+    const { id } = req.params; // Customer ID from URL
+    const newAddressData = req.body as AddressBody; // New address from the request body
 
-    // Überprüfen, ob der Kunde existiert
+    // Check if the customer exists
     const customer = await Customer.findById(id);
     if (!customer) {
       return res.status(404).json({ error: "Customer not found" });
     }
 
-    // Neue Adresse erstellen
+    // Create new address
     const newAddress = new Address(newAddressData);
     const savedAddress = await newAddress.save();
 
-    // Adresse zum Kunden hinzufügen
+    // Add the address to the customer
     customer.addresses.push(savedAddress);
     await customer.save();
 
@@ -219,6 +246,12 @@ export const addAddressToCustomer = async (
       customer,
     });
   } catch (error: any) {
+    if (error instanceof mongoose.Error.ValidationError) {
+      const errorMessages = Object.values(error.errors).map(
+        (err) => err.message
+      );
+      return res.status(400).json({ errors: errorMessages });
+    }
     res.status(500).json({ error: error.message });
   }
 };
@@ -238,34 +271,94 @@ export const updateCustomer = async (
   const { intNr, type, contactPersons, addresses } = req.body;
 
   try {
-    // Try find the existing customer
+    // Try to find the existing customer
     const existingCustomer = await Customer.findById(req.params.id);
 
     if (!existingCustomer) {
       return res.status(404).json({ msg: "Customer not found" });
     }
 
-    // Update the data, but igrnore the `intNr`! We never should change this number!
+    // Update the data but ignore the `intNr` as we should never change this number
     const updatedCustomer = await Customer.findByIdAndUpdate(
       req.params.id,
       {
         type,
         contactPersons,
         addresses,
-        // intNr will be the same like before
-        intNr: existingCustomer.intNr,
+        intNr: existingCustomer.intNr, // Keep the intNr unchanged
       },
       { new: true }
     );
 
     res.json(updatedCustomer);
   } catch (err: any) {
-    console.error(err.message);
-    res.status(500).send("Server error");
+    if (err instanceof mongoose.Error.ValidationError) {
+      const errorMessages = Object.values(err.errors).map(
+        (error) => error.message
+      );
+      return res.status(400).json({ errors: errorMessages });
+    }
+    res.status(500).json({ error: err.message });
   }
 };
 
-export const changeAddress = async (
+/**
+ * @desc Add a contact person to an existing customer
+ * @route PUT /customers/:customerId/contact
+ * @access Public
+ * @param {Request} req - Express request object
+ * @param {Response} res - Express response object
+ * @returns {Promise<any>} - Updated customer or error message
+ */
+export const addContactPersonToCustomer = async (
+  req: Request,
+  res: Response
+): Promise<any> => {
+  try {
+    const { customerId } = req.params; // Customer ID from URL
+    const personData = req.body as ContactPersonBody; // New contact person from the request body
+
+    // Check if the customer exists
+    const customer = await Customer.findById(customerId);
+    if (!customer) {
+      return res.status(404).json({ error: "Customer not found" });
+    }
+
+    // Create new contact person
+    const newContactPersonData = {
+      ...personData,
+      address: null, // Address will remain null for now
+    };
+
+    // Add the contact person to the customer
+    const newContactPerson = new ContactPerson(newContactPersonData);
+    customer.contactPersons.push(newContactPerson);
+    await customer.save();
+
+    res.status(200).json({
+      message: "Contact person successfully added to customer",
+      customer,
+    });
+  } catch (error: any) {
+    if (error instanceof mongoose.Error.ValidationError) {
+      const errorMessages = Object.values(error.errors).map(
+        (err) => err.message
+      );
+      return res.status(400).json({ errors: errorMessages });
+    }
+    res.status(500).json({ error: error.message });
+  }
+};
+
+/**
+ * @desc Update an existing address
+ * @route PUT /customers/addresses/:addressId
+ * @access Public
+ * @param {Request} req - Express request object
+ * @param {Response} res - Express response object
+ * @returns {Promise<any>} - Updated address or error message
+ */
+export const updateAddress = async (
   req: Request,
   res: Response
 ): Promise<any> => {
@@ -273,14 +366,14 @@ export const changeAddress = async (
   const updatedAddressData = req.body;
 
   try {
-    // Kunden anhand der customerId suchen
+    // Find customer by customerId
     const customer = await Customer.findById(customerId);
 
     if (!customer) {
       return res.status(404).json({ message: "Customer not found" });
     }
 
-    // Die Adresse anhand der addressId finden
+    // Find the address by addressId
     const addressIndex = customer.addresses.findIndex(
       (address: any) => address._id.toString() === addressId
     );
@@ -289,18 +382,194 @@ export const changeAddress = async (
       return res.status(404).json({ message: "Address not found" });
     }
 
-    // Die gefundene Adresse aktualisieren
+    // Update the found address
     customer.addresses[addressIndex] = {
       ...customer.addresses[addressIndex].toObject(),
       ...updatedAddressData,
     };
 
-    // Änderungen speichern
+    // Save the changes
     await customer.save();
 
     res.status(200).json({ message: "Address successfully updated", customer });
-  } catch (error) {
+  } catch (error: any) {
+    if (error instanceof mongoose.Error.ValidationError) {
+      const errorMessages = Object.values(error.errors).map(
+        (err) => err.message
+      );
+      return res.status(400).json({ errors: errorMessages });
+    }
     res.status(500).json({ message: "Server error", error });
+  }
+};
+
+/**
+ * @desc Delete an address, ensuring conditions are met:
+ * - The customer must have at least one remaining address.
+ * - Contact persons linked to the address must be updated.
+ * @route DELETE /customers/:customerId/addresses/:addressId
+ * @access Public
+ * @param {Request} req - Express request object
+ * @param {Response} res - Express response object
+ * @returns {Promise<any>} - Success message or error message
+ */
+export const deleteAddress = async (
+  req: Request,
+  res: Response
+): Promise<any> => {
+  const { customerId, addressId } = req.params;
+
+  try {
+    // Find the customer by customerId
+    const customer = await Customer.findById(customerId);
+
+    if (!customer) {
+      return res.status(404).json({ message: "Customer not found" });
+    }
+
+    // Check if the customer has more than one address
+    if (customer.addresses.length <= 1) {
+      return res
+        .status(400)
+        .json({ message: "At least one address must exist" });
+    }
+
+    // Remove the address from the customer's address list
+    customer.addresses = customer.addresses.filter(
+      (address: any) => address._id.toString() !== addressId
+    );
+
+    // Update contact persons linked to the deleted address
+    customer.contactPersons.forEach((contact: any) => {
+      if (contact.address?.toString() === addressId) {
+        contact.address = null; // Remove the address binding
+      }
+    });
+
+    // Save the changes in the customer
+    await customer.save();
+
+    res.status(200).json({ message: "Address successfully deleted", customer });
+  } catch (error: any) {
+    if (error instanceof mongoose.Error.ValidationError) {
+      const errorMessages = Object.values(error.errors).map(
+        (err) => err.message
+      );
+      return res.status(400).json({ errors: errorMessages });
+    }
+    res.status(500).json({ message: "Error while deleting address", error });
+  }
+};
+
+/**
+ * @desc Update an existing contact person
+ * @route PUT /customers/contacts/:contactId
+ * @access Public
+ * @param {Request} req - Express request object
+ * @param {Response} res - Express response object
+ * @returns {Promise<any>} - Updated contact person or error message
+ */
+export const updateContactPerson = async (
+  req: Request,
+  res: Response
+): Promise<any> => {
+  const { customerId, contactId } = req.params;
+  const updatedContactData = req.body;
+
+  try {
+    // Find customer by customerId
+    const customer = await Customer.findById(customerId);
+
+    if (!customer) {
+      return res.status(404).json({ message: "Customer not found" });
+    }
+
+    // Find the contact person by contactId
+    const contactIndex = customer.contactPersons.findIndex(
+      (contact: any) => contact._id.toString() === contactId
+    );
+
+    if (contactIndex === -1) {
+      return res.status(404).json({ message: "Contact person not found" });
+    }
+
+    // Update the found contact person
+    customer.contactPersons[contactIndex] = {
+      ...customer.contactPersons[contactIndex].toObject(),
+      ...updatedContactData,
+    };
+
+    // Save the changes
+    await customer.save();
+
+    res
+      .status(200)
+      .json({ message: "Contact person successfully updated", customer });
+  } catch (error: any) {
+    if (error instanceof mongoose.Error.ValidationError) {
+      const errorMessages = Object.values(error.errors).map(
+        (err) => err.message
+      );
+      return res.status(400).json({ errors: errorMessages });
+    }
+    res
+      .status(500)
+      .json({ message: "Error while updating contact person", error });
+  }
+};
+
+/**
+ * @desc Delete a contact person, ensuring conditions are met:
+ * - The customer must have at least one remaining contact person.
+ * - If only one contact person exists, it cannot be deleted.
+ * @route DELETE /customers/:customerId/contacts/:contactId
+ * @access Public
+ * @param {Request} req - Express request object
+ * @param {Response} res - Express response object
+ * @returns {Promise<any>} - Success message or error message
+ */
+export const deleteContactPerson = async (
+  req: Request,
+  res: Response
+): Promise<any> => {
+  const { customerId, contactId } = req.params;
+
+  try {
+    // Find customer
+    const customer = await Customer.findById(customerId);
+
+    if (!customer) {
+      return res.status(404).json({ message: "Customer not found" });
+    }
+
+    // Check if the customer has more than one contact person
+    if (customer.contactPersons.length <= 1) {
+      return res
+        .status(400)
+        .json({ message: "At least one contact person must exist" });
+    }
+
+    // Remove the contact person from the list of contact persons
+    customer.contactPersons = customer.contactPersons.filter(
+      (contact: any) => contact._id.toString() !== contactId
+    );
+
+    // Save the changes in the customer
+    await customer.save();
+
+    res
+      .status(200)
+      .json({ message: "Contact person successfully deleted", customer });
+  } catch (error: any) {
+    if (error instanceof mongoose.Error.ValidationError) {
+      const errorMessages = Object.values(error.errors).map(
+        (err) => err.message
+      );
+      return res.status(400).json({ errors: errorMessages });
+    }
+    res
+      .status(500)
+      .json({ message: "Error while deleting contact person", error });
   }
 };
 
@@ -325,7 +594,6 @@ export const deleteCustomer = async (
 
     res.json({ msg: "Customer deleted" });
   } catch (err: any) {
-    console.error(err.message);
-    res.status(500).send("Server error");
+    res.status(500).json({ error: err.message });
   }
 };
