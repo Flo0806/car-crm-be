@@ -1,6 +1,6 @@
 import mongoose, { Schema, Document, Types } from "mongoose";
 
-// Schema für Address
+// Schema for Address
 const AddressSchema = new Schema({
   companyName: { type: String, maxlength: 50 },
   country: { type: String, maxlength: 50, required: true },
@@ -10,42 +10,51 @@ const AddressSchema = new Schema({
   email: {
     type: String,
     maxlength: 50,
-    match: [/^\S+@\S+\.\S+$/, "Please use a valid email address"],
+    match: [/^\S+@\S+\.\S+$/, "E-Mail hat falsches Format (xxx@xxx.xx)"],
   },
   phone: {
     type: String,
     maxlength: 20,
-    match: [/^\+?[1-9]\d{1,14}$/, "Please use a valid phone number"],
+    match: [
+      /^(\+?[1-9]\d{0,14}|\d{1,15})(\s?\d{1,13})*$/,
+      "Telefonnummer hat falsches Format (+xx xxxxxxx oder 0123456)",
+    ],
   },
   fax: {
     type: String,
     maxlength: 20,
-    match: [/^\+?[1-9]\d{1,14}$/, "Please use a valid fax number"],
+    match: [
+      /^(\+?[1-9]\d{0,14}|\d{1,15})(\s?\d{1,13})*$/,
+      "Faxnummer hat falsches Format (+xx xxxxxxx)",
+    ],
   },
 });
 
-// Schema für ContactPerson
+// Schema for ContactPerson
 const ContactPersonSchema = new Schema({
   firstName: { type: String, maxlength: 50, required: true },
   lastName: { type: String, maxlength: 50, required: true },
   email: {
     type: String,
     maxlength: 50,
-    match: [/^\S+@\S+\.\S+$/, "Please use a valid email address"],
+    match: [/^\S+@\S+\.\S+$/, "E-Mail hat falsches Format (xxx@xxx.xx)"],
   },
   phone: {
     type: String,
     maxlength: 20,
-    match: [/^\+?[1-9]\d{1,14}$/, "Please use a valid phone number"],
+    match: [
+      /^(\+?[1-9]\d{0,14}|\d{1,15})(\s?\d{1,13})*$/,
+      "Telefonnummer hat falsches Format (+xx xxxxxxx)",
+    ],
   },
   birthDate: {
     type: String,
-    match: [/^\d{4}-\d{2}-\d{2}$/, "Please use a valid date format YYYY-MM-DD"],
+    match: [/^\d{4}-\d{2}-\d{2}$/, "Datum hat falsches Format (YYYY-MM-DD)"],
   },
   address: { type: Types.ObjectId, ref: "Address" },
 });
 
-// Schema für Customer
+// Schema for Customer
 const CustomerSchema = new Schema(
   {
     intNr: { type: String, maxlength: 10, required: true, unique: true },
@@ -77,7 +86,7 @@ interface ContactPersonType extends Document {
   email?: string;
   phone?: string;
   birthDate?: string;
-  address?: Types.ObjectId; // Verknüpfung zur Adresse
+  address?: Types.ObjectId; // Relation to address
 }
 
 interface CustomerType extends Document {
@@ -89,5 +98,9 @@ interface CustomerType extends Document {
 
 const Customer = mongoose.model<CustomerType>("Customer", CustomerSchema);
 const Address = mongoose.model<AddressType>("Address", AddressSchema);
+const ContactPerson = mongoose.model<ContactPersonType>(
+  "ContactPerson",
+  ContactPersonSchema
+);
 
-export { Customer, Address, ContactPersonType, AddressType };
+export { Customer, Address, ContactPerson, ContactPersonType, AddressType };
