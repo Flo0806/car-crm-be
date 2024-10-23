@@ -2,6 +2,7 @@ import { Router } from "express";
 import multer from "multer";
 import { importCustomers } from "../controllers/import.controller";
 import * as path from "path";
+import { verifyAccessToken } from "../common/middlewares/verify-token.middleware";
 
 const router = Router();
 // Multer configuration for file uploads
@@ -25,17 +26,18 @@ const upload = multer({
  */
 router.post(
   "/customers",
+  verifyAccessToken,
   (req, res, next) => {
     upload(req, res, (err) => {
       if (err) {
         if (err.code === "LIMIT_FILE_SIZE") {
           return res
             .status(400)
-            .json({ msg: "File too large. Maximum size is 512KB." });
+            .json({ msg: "Datei ist zu groß. Maximal sind 512KB erlaubt." });
         }
         return res
           .status(500)
-          .json({ msg: "File upload error", error: err.message });
+          .json({ msg: "Unbekannter Fehler beim Upload.", error: err.message });
       }
       next(); // Go to next controller
     });

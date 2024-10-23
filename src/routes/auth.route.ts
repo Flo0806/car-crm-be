@@ -20,6 +20,6 @@ router.post("/token", refreshToken);
  * @route POST /auth/logout
  * @desc Logout and invalidate refresh token
  */
-router.post("/logout", logout);
+router.post("/logout", verifyAccessToken, logout);
 
 export default router;
