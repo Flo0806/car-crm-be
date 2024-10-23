@@ -25,12 +25,9 @@ const connectDB = async () => {
     console.log("MongoDB connected");
 
     // const collections = await mongoose.connection!.db!.collections();
-    // console.log("COLLECTIONS", collections);
     // for (let collection of collections) {
     //   await collection.deleteMany({});
     // }
-
-    // console.log("Alle Daten erfolgreich gelöscht.");
   } catch (err: any) {
     console.error(err.message);
     process.exit(1); // Exit server if connection failed
