@@ -12,6 +12,7 @@ import {
   updateCustomer,
   addContactPersonToCustomer,
 } from "../controllers/customer.controller";
+import { verifyAccessToken } from "../common/middlewares/verify-token.middleware";
 
 const router = Router();
 
@@ -20,32 +21,26 @@ const router = Router();
  * @desc Get all customers
  * @access Public
  */
-router.get("/", getAllCustomers);
+router.get("/", verifyAccessToken, getAllCustomers);
 
 /**
  * @route GET /customers/:id
  * @desc Get all customers
  * @access Public
  */
-router.get("/:customerId", getCustomerById);
+router.get("/:customerId", verifyAccessToken, getCustomerById);
+
+/**
+ * @route DELETE /customers/:id
+ * @desc Delete a customer
+ */
+router.delete("/:customerId", verifyAccessToken, deleteCustomer);
 
 /**
  * @route POST /customers
  * @desc Create a new customer
  */
-router.post("/", createCustomer);
-
-router.put("/:id/address", addAddressToCustomer);
-
-router.put("/:customerId/addresses/:addressId", updateAddress);
-
-router.delete("/:customerId/addresses/:addressId", deleteAddress);
-
-router.put("/:customerId/contact", addContactPersonToCustomer);
-
-router.put("/:customerId/contacts/:contactId", updateContactPerson);
-
-router.delete("/:customerId/contacts/:contactId", deleteContactPerson);
+router.post("/", verifyAccessToken, createCustomer);
 
 /**
  * @route PUT /customers/:id
@@ -53,10 +48,36 @@ router.delete("/:customerId/contacts/:contactId", deleteContactPerson);
  */
 router.put("/:id", updateCustomer);
 
-/**
- * @route DELETE /customers/:id
- * @desc Delete a customer
- */
-router.delete("/:id", deleteCustomer);
+router.put("/:id/address", verifyAccessToken, addAddressToCustomer);
+
+router.put(
+  "/:customerId/addresses/:addressId",
+  verifyAccessToken,
+  updateAddress
+);
+
+router.delete(
+  "/:customerId/addresses/:addressId",
+  verifyAccessToken,
+  deleteAddress
+);
+
+router.put(
+  "/:customerId/contact",
+  verifyAccessToken,
+  addContactPersonToCustomer
+);
+
+router.put(
+  "/:customerId/contacts/:contactId",
+  verifyAccessToken,
+  updateContactPerson
+);
+
+router.delete(
+  "/:customerId/contacts/:contactId",
+  verifyAccessToken,
+  deleteContactPerson
+);
 
 export default router;
