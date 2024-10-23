@@ -59,20 +59,19 @@ export const refreshToken = async (
   req: Request,
   res: Response
 ): Promise<any> => {
-  const { token } = req.body;
-
-  if (!token) {
+  const { refreshToken } = req.body;
+  if (!refreshToken) {
     return res.status(403).json({ msg: "Refresh token required" });
   }
 
   try {
     // Check if the token exists in the database
-    const storedToken = await Token.findOne({ token });
+    const storedToken = await Token.findOne({ token: refreshToken });
     if (!storedToken) {
       return res.status(403).json({ msg: "Invalid refresh token" });
     }
 
-    const decoded = jwt.verify(token, refreshTokenSecret) as any;
+    const decoded = jwt.verify(refreshToken, refreshTokenSecret) as any;
     const newAccessToken = jwt.sign(
       { userId: decoded.userId },
       accessTokenSecret,

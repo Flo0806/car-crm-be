@@ -114,6 +114,7 @@ export const getAllCustomers = async (
 
     res.status(200).json(flatCustomerList);
   } catch (error: any) {
+    console.log(error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -268,7 +269,7 @@ export const updateCustomer = async (
   req: Request,
   res: Response
 ): Promise<any> => {
-  const { intNr, type, contactPersons, addresses } = req.body;
+  const { type } = req.body;
 
   try {
     // Try to find the existing customer
@@ -283,8 +284,6 @@ export const updateCustomer = async (
       req.params.id,
       {
         type,
-        contactPersons,
-        addresses,
         intNr: existingCustomer.intNr, // Keep the intNr unchanged
       },
       { new: true }
@@ -574,8 +573,8 @@ export const deleteContactPerson = async (
 };
 
 /**
- * @desc Delete a customer
- * @route DELETE /customers/:id
+ * @desc Delete a customer including addresses and contact persons
+ * @route DELETE /customers/:customerId
  * @access Public
  * @param {Request} req - Express request object
  * @param {Response} res - Express response object
@@ -585,15 +584,29 @@ export const deleteCustomer = async (
   req: Request,
   res: Response
 ): Promise<any> => {
+  const { customerId } = req.params;
   try {
-    const customer = await Customer.findByIdAndDelete(req.params.id);
+    // Find the customer by ID
+    const customer = await Customer.findById(customerId);
 
     if (!customer) {
       return res.status(404).json({ msg: "Customer not found" });
     }
 
-    res.json({ msg: "Customer deleted" });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    // Delete associated addresses
+    await Address.deleteMany({ _id: { $in: customer.addresses } });
+
+    // Delete associated contact persons
+    await ContactPerson.deleteMany({ _id: { $in: customer.contactPersons } });
+
+    // Finally, delete the customer
+    await Customer.findByIdAndDelete(customerId);
+
+    res
+      .status(200)
+      .json({ msg: "Customer and associated data deleted successfully" });
+  } catch (error: any) {
+    console.log(error.message);
+    res.status(500).json({ msg: "Server error" });
   }
 };

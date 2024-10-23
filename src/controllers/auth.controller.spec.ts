@@ -5,6 +5,7 @@ import jwt from "jsonwebtoken";
 import app from "../server"; // Express server
 import User from "../models/user.model";
 import Token from "../models/token.model";
+import { refreshToken } from "./auth.controller";
 
 // Mock bcryptjs, jsonwebtoken, and mongoose models
 vi.mock("bcryptjs");
@@ -109,7 +110,7 @@ describe("AuthController - Login", () => {
 
     const res = await request(app)
       .post("/auth/token")
-      .send({ token: "valid-refresh-token" });
+      .send({ refreshToken: "valid-refresh-token" });
 
     expect(res.status).toBe(200);
     expect(res.body.accessToken).toBe("new-access-token");
@@ -128,7 +129,7 @@ describe("AuthController - Login", () => {
 
     const res = await request(app)
       .post("/auth/token")
-      .send({ token: "invalid-refresh-token" });
+      .send({ refreshToken: "invalid-refresh-token" });
 
     expect(res.status).toBe(403);
     expect(res.body.msg).toBe("Invalid refresh token");

@@ -64,7 +64,7 @@ export const importCustomers = async (
         res.json({
           msg: "Customers imported successfully",
           skipped: skippedCustomers.length
-            ? `Skipped customers with intNr: ${skippedCustomers.join(", ")}`
+            ? `Übersprungene Kunden: ${skippedCustomers.join(", ")}`
             : null,
         });
       });
