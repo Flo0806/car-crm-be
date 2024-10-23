@@ -39,5 +39,6 @@ export interface ContactPersonBody {
   email: string;
   phone: string;
   birthDate: string;
+  address?: string;
 }
 //#endregion

@@ -326,7 +326,6 @@ export const addContactPersonToCustomer = async (
     // Create new contact person
     const newContactPersonData = {
       ...personData,
-      address: null, // Address will remain null for now
     };
 
     // Add the contact person to the customer
